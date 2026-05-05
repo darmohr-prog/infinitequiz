@@ -1,5 +1,5 @@
 // app/api/generate/route.js
-// La cle API Gemini est lue depuis les variables d'environnement Vercel.
+// La cle API Groq est lue depuis les variables d'environnement Vercel.
 // Elle n'est JAMAIS envoyee au navigateur.
 
 const LEVELS = [
@@ -45,29 +45,28 @@ ${usedList || "(aucune question posee encore)"}
 Reponds UNIQUEMENT en JSON valide, sans markdown, sans texte autour :
 {"q":"texte de la question","choices":["choix A","choix B","choix C","choix D"],"answer":INDEX_CORRECT,"category":"${category}","level":${level}}`;
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-
-    const response = await fetch(url, {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+      },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.9,
-          maxOutputTokens: 512,
-        },
+        model: "llama-3.3-70b-versatile",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 512,
+        temperature: 0.9,
       }),
     });
 
     if (!response.ok) {
       const err = await response.text();
-      console.error("Gemini API error:", err);
-      return Response.json({ error: "Erreur API Gemini" }, { status: 502 });
+      console.error("Groq API error:", err);
+      return Response.json({ error: "Erreur API Groq" }, { status: 502 });
     }
 
     const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const text = data.choices?.[0]?.message?.content || "";
     const clean = text.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(clean);
 
